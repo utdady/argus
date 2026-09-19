@@ -49,18 +49,18 @@ pending_confirm  # tool name + args + token, if any
 speaker_match    # optional: confidence that voice == enrolled user
 ```
 
-## Tools (V0 starter set)
+## Tools (V0 starter set — offline)
 
 | Tool | Risk | Confirm? |
 |------|------|----------|
 | `get_time` | read | No |
-| `get_weather` | read | No |
-| `web_search` | read | No |
 | `remember` | write | No |
 | `recall` | read | No |
-| `open_application` | side_effect | Yes (allowlisted apps only) |
+| `open_application` | side_effect | Yes (allowlisted apps; **dry-run** only) |
 
-**Not in V0:** unrestricted shell, email send, purchases, door locks, arbitrary file delete.
+**Deferred:** `get_weather`, `web_search` (keep brain offline until loop is proven).
+
+**Not in V0:** unrestricted shell, email send, purchases, door locks, arbitrary file delete, real process launch.
 
 ## Permission model
 
@@ -99,11 +99,11 @@ Retrieval must filter by identity **before** context reaches the LLM.
 
 ## Voice extras (staging)
 
-| Feature | V0 | Notes |
-|---------|----|--------|
-| STT + TTS | Yes | Behind provider interfaces |
-| Push-to-talk | Yes | Primary capture mode |
-| Soft speaker ID | Optional | Enroll one voice; log confidence; soft gate for sensitive tools |
+| Feature | This brain slice | Notes |
+|---------|------------------|--------|
+| STT + TTS | Deferred | After CLI brain |
+| Push-to-talk | Deferred | — |
+| Soft speaker ID | Deferred | — |
 | Wake word | V0.5 | After PTT + tools are solid |
 
 Speaker ID for one enrolled profile is binary: **match owner / unknown**. Do not treat it as strong auth for high-risk actions.

@@ -2,58 +2,55 @@
 
 Choices for V0 and what we explicitly defer. Prefer interfaces over lock-in.
 
-## V0 choices
+## V0 choices (brain slice)
 
 | Layer | Choice | Notes |
 |-------|--------|--------|
-| Language | Python 3.11+ | Matches planned FastAPI / AI tooling |
-| API | FastAPI | REST + WebSocket |
-| Orchestrator | In-process Python module | Tool-calling loop; no heavy agent framework yet |
-| LLM | API provider behind `LLMProvider` | e.g. OpenAI-compatible; local later |
-| STT | faster-whisper (local) | Laptop GPU/CPU as available |
-| TTS | Piper (local) or hosted API | Start with whatever is simplest to ship |
-| Voice UX | Push-to-talk | Wake word deferred |
-| Speaker ID | Optional soft match | One enrolled profile |
-| DB | SQLite | Notes, sessions, audit; migrate later |
-| Vector memory | Deferred | Keyword / simple search first |
-| Client | Browser chat + mic | CLI optional |
-| Config | `.env` + example file | Secrets never committed |
-| Packaging | Plain venv first | Docker Compose when stabilizing |
+| Language | Python 3.11+ | `pyproject.toml` package `argus` |
+| Client | CLI (`python -m argus.cli`) | FastAPI / browser deferred |
+| Orchestrator | In-process ReAct loop | No agent framework |
+| LLM | Ollama via OpenAI-compatible `LLMProvider` | Default `qwen3:4b`; `base_url` swap for hosted |
+| STT / TTS | Deferred | After text brain is solid |
+| Voice UX | Deferred | Push-to-talk later |
+| DB | SQLite + FTS5 | Notes, sessions, audit, pending confirms |
+| Vector memory | Deferred | FTS first |
+| Config | `.env` / `.env.example` | Secrets never committed |
+| Packaging | venv + `pip install -e .` | Docker later |
 
 ## Interfaces (must stay)
 
 ```text
-SpeechToText
-LLMProvider
-TextToSpeech
-ToolExecutor
+LLMProvider.complete(messages, tools) -> Message
+# Later: SpeechToText, TextToSpeech, stream()
 ```
 
-Swap local ↔ cloud without rewriting orchestration.
+Swap local Ollama ↔ hosted OpenAI-compatible endpoint via `ARGUS_LLM_BASE_URL` only — **never** silent failover.
 
-## Explicitly not V0
+## Hardware (ASUS)
+
+- ~8 GB system RAM + ~6 GB VRAM
+- Default model class: **~4B** quantized; **8B** stretch eval only
+- `ARGUS_NUM_CTX≈4096`
+
+## Explicitly not this slice
 
 | Item | Why defer |
 |------|-----------|
-| PostgreSQL / pgvector / Qdrant | Premature until retrieval quality hurts |
-| Home Assistant | After tool + permission loop works |
-| Windows desktop agent | Separate process; post-V0 |
-| Native iOS app | Web client first |
-| Kubernetes / Proxmox / multi-VM | Ops theater for one laptop |
-| Fully local LLM requirement | Nice later; API is fine for V0 reasoning |
-| Voice cloning | Licensing + ML side quest |
-| Hard multi-user auth | Soft speaker ID optional only |
+| FastAPI / WebSocket | Prove loop in CLI first |
+| Browser / phone clients | After API |
+| Weather / web_search | Keep V0 offline |
+| Real app launch | Dry-run confirm only |
+| PostgreSQL / vectors | Premature |
+| Home Assistant | After tool + permission loop |
+| LAN Ollama exposure | No auth; use future API |
+| Agent frameworks | Unnecessary for V0 |
 
 ## Later stack (target, not committed)
 
 | Layer | Candidate |
 |-------|-----------|
+| API | FastAPI + WebSocket |
 | DB | PostgreSQL (+ pgvector optional) |
 | Deploy | Docker Compose on home server |
 | Home | Home Assistant as a **tool adapter** |
 | Remote | Secure tunnel; cloud as gateway only |
-| Identity | User accounts + device tokens + optional speaker embeddings |
-
-## Hardware note (dev)
-
-Primary development host: existing Windows machine (e.g. gaming desktop / laptop). No dedicated home server required for V0.

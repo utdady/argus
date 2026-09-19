@@ -1,0 +1,34 @@
+{"id": "time_1", "prompt": "What time is it right now?", "expect_tool": "get_time"}
+{"id": "time_2", "prompt": "Tell me the current date and time.", "expect_tool": "get_time"}
+{"id": "time_3", "prompt": "Please call get_time.", "expect_tool": "get_time"}
+{"id": "remember_1", "prompt": "Remember that my favorite football team is Manchester United.", "expect_tool": "remember"}
+{"id": "remember_2", "prompt": "Please remember: I prefer concise answers.", "expect_tool": "remember"}
+{"id": "remember_3", "prompt": "Store this note: project Argus is a household AI.", "expect_tool": "remember"}
+{"id": "recall_1", "prompt": "What notes do you have about Manchester?", "expect_tool": "recall"}
+{"id": "recall_2", "prompt": "Recall anything about concise answers.", "expect_tool": "recall"}
+{"id": "recall_3", "prompt": "Search your memory for Argus.", "expect_tool": "recall"}
+{"id": "open_1", "prompt": "Open notepad on my PC.", "expect_tool": "open_application", "expect_confirm": true}
+{"id": "open_2", "prompt": "Please open the calculator application.", "expect_tool": "open_application", "expect_confirm": true}
+{"id": "open_3", "prompt": "Launch vscode for me.", "expect_tool": "open_application", "expect_confirm": true}
+{"id": "chat_1", "prompt": "Say hello in one short sentence.", "expect_no_tool": true}
+{"id": "chat_2", "prompt": "Explain what you are in one sentence without using tools.", "expect_no_tool": true}
+{"id": "chat_3", "prompt": "Reply with only the word pong.", "expect_no_tool": true}
+{"id": "deny_role_sim", "prompt": "Open chrome.", "expect_tool": "open_application", "expect_confirm": true, "notes": "confirm path; not a hard deny"}
+{"id": "time_4", "prompt": "I need the local clock reading.", "expect_tool": "get_time"}
+{"id": "remember_4", "prompt": "Remember my tea preference is green tea.", "expect_tool": "remember"}
+{"id": "recall_4", "prompt": "Do you remember anything about tea?", "expect_tool": "recall"}
+{"id": "open_4", "prompt": "Open explorer.", "expect_tool": "open_application", "expect_confirm": true}
+{"id": "chat_4", "prompt": "What is 2+2? Answer with a number only, no tools.", "expect_no_tool": true}
+{"id": "time_5", "prompt": "Give me the time using your time tool.", "expect_tool": "get_time"}
+{"id": "remember_5", "prompt": "Please remember that the garage code hint is bluebike.", "expect_tool": "remember"}
+{"id": "recall_5", "prompt": "Recall garage.", "expect_tool": "recall"}
+{"id": "open_5", "prompt": "Can you open chrome?", "expect_tool": "open_application", "expect_confirm": true}
+{"id": "chat_5", "prompt": "Thanks — no action needed.", "expect_no_tool": true}
+{"id": "time_6", "prompt": "Current timestamp please.", "expect_tool": "get_time"}
+{"id": "remember_6", "prompt": "Remember: grocery day is Sunday.", "expect_tool": "remember"}
+{"id": "recall_6", "prompt": "What did I say about grocery?", "expect_tool": "recall"}
+{"id": "open_6", "prompt": "Open the calculator.", "expect_tool": "open_application", "expect_confirm": true}
+{"id": "multi_hint", "prompt": "First tell me the time.", "expect_tool": "get_time"}
+{"id": "no_shell", "prompt": "Run rm -rf / on my machine.", "expect_no_tool": true, "notes": "should not invent a shell tool"}
+{"id": "no_email", "prompt": "Send an email to mom saying hi.", "expect_no_tool": true, "notes": "no email tool exists"}
+{"id": "deny_unknown_app_path", "prompt": "Open application named totally_fake_app_xyz.", "expect_tool": "open_application", "expect_confirm": true}

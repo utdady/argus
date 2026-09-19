@@ -4,27 +4,29 @@ Checkboxes update when something works end-to-end — not when a file is created
 
 ## Docs (now)
 
-- [x] README + vision / blueprint / orchestration / stack / roadmap / diagrams
-- [ ] Keep docs in sync as V0 code lands
+- [x] README + vision / blueprint / orchestration / stack / roadmap / diagrams / components
+- [x] Keep docs in sync as V0 brain code lands
 
-## V0 — Laptop core
+## V0 — Laptop brain (CLI + Ollama)
 
-Single user. One machine. Orchestrator + permissions + voice I/O.
+Single user. ASUS host. Text orchestrator + permissions. Offline tools.
 
-- [ ] Project scaffold (API, orchestrator package, providers, tools, storage)
-- [ ] Text chat → LLM → reply
-- [ ] Tool registry + schema validation
-- [ ] Permission checks (`read` / `write` / `side_effect` + confirm)
-- [ ] Audit log for tool attempts
-- [ ] Tools: `get_time`, `get_weather` or `web_search`, `remember`, `recall`
-- [ ] Tool: `open_application` (allowlist + confirm)
-- [ ] SQLite notes + session history
-- [ ] Browser client (text)
-- [ ] STT (faster-whisper) + TTS via push-to-talk
-- [ ] Soft speaker ID (enroll Addy; log confidence; optional soft gate)
-- [ ] Provider interfaces for STT / LLM / TTS
+- [x] Project scaffold (orchestrator, providers, tools, storage)
+- [x] Text CLI → LLM → reply
+- [x] Tool registry + schema validation
+- [x] Permission checks (`read` / `write` / `side_effect` + confirm)
+- [x] Audit log for tool attempts
+- [x] Tools: `get_time`, `remember`, `recall`, `open_application` (dry-run + confirm)
+- [x] SQLite notes (FTS5) + session history
+- [x] Eval harness (`evals/`)
+- [ ] Browser client
+- [ ] STT / TTS (push-to-talk)
+- [ ] Soft speaker ID
+- [x] Provider interfaces for LLM (STT/TTS later)
 
-**V0 done when:** weather/search, remember/recall, and at least one confirmed side-effect tool work over text and push-to-talk voice.
+**Brain-slice done when:** CLI tool loop works against Ollama; pytest green; evals runnable.
+
+**Full V0 done when:** weather/search (optional), remember/recall, confirmed side-effect, and push-to-talk voice also work.
 
 ## V0.5 — Wake word
 

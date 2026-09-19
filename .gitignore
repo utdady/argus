@@ -24,7 +24,8 @@ Thumbs.db
 *.swp
 
 # Local data
-data/
+data/*
+!data/.gitkeep
 *.db
 *.sqlite3
 

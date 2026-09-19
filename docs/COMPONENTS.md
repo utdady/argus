@@ -16,20 +16,21 @@ Update **Status** when a part starts or finishes; keep **Scope** honest so V0 st
 
 ---
 
-## V0 core (build these)
+## V0 core (brain slice)
 
 | Component | Role | Scope | Status | Detail |
 |-----------|------|-------|--------|--------|
-| **Client** | Ears/mouth/UI — text + push-to-talk, play TTS | Browser on laptop | planned | [BLUEPRINT](BLUEPRINT.md) |
-| **API** | Door to the brain — REST (+ WebSocket later) | FastAPI on laptop | planned | [BLUEPRINT](BLUEPRINT.md) |
-| **Orchestrator** | Control loop, state machine, tool loop | In-process Python | planned | [ORCHESTRATION](ORCHESTRATION.md) |
-| **LLM provider** | Messages + tools → answer or tool calls | API behind interface | planned | [TECH_STACK](TECH_STACK.md) |
-| **Tools** | Named capabilities (`get_time`, weather/search, remember/recall, open_app) | Registry + schemas | planned | [ORCHESTRATION](ORCHESTRATION.md) |
-| **Permissions** | Gate tools by risk; confirm side effects | Code, not prompts | planned | [ORCHESTRATION](ORCHESTRATION.md) |
-| **Memory** | Durable notes via remember/recall | Flat SQLite notes | planned | [ORCHESTRATION](ORCHESTRATION.md) |
-| **Storage / audit** | Sessions, messages, tool audit log | SQLite | planned | [BLUEPRINT](BLUEPRINT.md) |
-| **STT** | Audio → transcript | faster-whisper (local) | planned | [TECH_STACK](TECH_STACK.md) |
-| **TTS** | Reply text → audio | Piper or hosted | planned | [TECH_STACK](TECH_STACK.md) |
+| **Client** | Text REPL | `python -m argus.cli` | done | [README](../README.md) |
+| **API** | Door to the brain | FastAPI | deferred | After CLI brain |
+| **Orchestrator** | ReAct loop, confirm pause/resume | `argus/orchestrator/` | done | [ORCHESTRATION](ORCHESTRATION.md) |
+| **LLM provider** | OpenAI-compatible → Ollama | `argus/providers/` | done | [TECH_STACK](TECH_STACK.md) |
+| **Tools** | `get_time`, `remember`, `recall`, `open_application` dry-run | `argus/tools/` | done | [ORCHESTRATION](ORCHESTRATION.md) |
+| **Permissions** | allow / confirm / deny in code | `argus/permissions/` | done | [ORCHESTRATION](ORCHESTRATION.md) |
+| **Memory** | Notes + FTS5 via remember/recall | SQLite | done | [ORCHESTRATION](ORCHESTRATION.md) |
+| **Storage / audit** | Sessions, messages, audit, pending confirms | `argus/storage/` | done | [BLUEPRINT](BLUEPRINT.md) |
+| **Evals** | JSONL cases + pass rate / latency | `evals/` | done | [TECH_STACK](TECH_STACK.md) |
+| **STT** | Audio → transcript | faster-whisper | deferred | After text brain |
+| **TTS** | Reply text → audio | Piper or hosted | deferred | After text brain |
 
 ---
 
@@ -37,7 +38,7 @@ Update **Status** when a part starts or finishes; keep **Scope** honest so V0 st
 
 | Component | Role | Scope | Status | Detail |
 |-----------|------|-------|--------|--------|
-| **Speaker ID** | Soft “is this Addy?” match | One enrolled voice; soft gate for side effects | optional | [ORCHESTRATION](ORCHESTRATION.md) |
+| **Speaker ID** | Soft “is this Addy?” match | One enrolled voice | deferred | [ORCHESTRATION](ORCHESTRATION.md) |
 
 ---
 
@@ -76,38 +77,33 @@ Update **Status** when a part starts or finishes; keep **Scope** honest so V0 st
 | Kubernetes / multi-VM sprawl | Ops overhead before a working V0 |
 | Vector DB as day-one memory | Keyword notes first |
 | Intent-classifier microservice | Tool-calling is enough for V0 |
+| Silent cloud LLM failover | Privacy; hosted is explicit config only |
 
 ---
 
-## How parts connect (one glance)
+## How parts connect (V0)
 
 ```text
-Client → API → Orchestrator → LLM provider
-                    ↓
-           Permissions → Tools
-                    ↓
-           Memory ← Storage / audit
-                    ↓
-              STT / TTS
-           (Speaker ID optional)
+CLI → Orchestrator → LLM provider (Ollama)
+            ↓
+   Permissions → Tools
+            ↓
+   Memory ← Storage / audit / pending confirm
 ```
 
 Full diagrams: [DIAGRAMS.md](DIAGRAMS.md).
 
 ---
 
-## Code map (when scaffold lands)
+## Code map
 
-Expected packages (not created yet):
-
-| Component | Likely path |
-|-----------|-------------|
-| API | `apps/api/` or `argus/api/` |
+| Component | Path |
+|-----------|------|
+| CLI | `argus/cli.py` |
 | Orchestrator | `argus/orchestrator/` |
-| Providers (STT/LLM/TTS) | `argus/providers/` |
+| LLM provider | `argus/providers/` |
 | Tools | `argus/tools/` |
 | Permissions | `argus/permissions/` |
-| Memory / storage | `argus/storage/` |
-| Client | `apps/web/` or `clients/web/` |
-
-Update this table when the repo scaffold exists.
+| Storage | `argus/storage/` |
+| Evals | `evals/` |
+| API / web client | not yet |
