@@ -81,7 +81,21 @@ python -m argus.api
 
 Open [http://127.0.0.1:8787](http://127.0.0.1:8787). Same orchestrator as the CLI (sessions, tools, `/api/confirm` for side-effects). Bound to localhost only.
 
+### Voice push-to-talk (optional)
+
+```bash
+pip install -e ".[voice]"
+# in .env:
+# ARGUS_VOICE_ENABLED=1
+# ARGUS_STT_MODEL=tiny
+# ARGUS_STT_DEVICE=cpu
+python -m argus.api
+```
+
+Open the UI and use **Hold to talk**. STT runs on CPU by default so Ollama can keep the GPU. First run downloads the Whisper `tiny` model. WebM uploads need ffmpeg on PATH for decoding.
+
 ### Tests (no LLM required)
+
 
 
 ```bash

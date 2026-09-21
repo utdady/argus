@@ -32,3 +32,19 @@ class LLMProvider(Protocol):
     ) -> Message:
         """Non-streaming completion. Callers should not assume streaming exists yet."""
         ...
+
+
+class SpeechToText(Protocol):
+    """Audio bytes -> transcript text."""
+
+    def transcribe(self, audio: bytes, *, mime_type: str = "audio/wav") -> str:
+        ...
+
+
+class TextToSpeech(Protocol):
+    """Reply text -> audio bytes (wav)."""
+
+    def synthesize(self, text: str) -> tuple[bytes, str]:
+        """Return (audio_bytes, mime_type)."""
+        ...
+

@@ -11,8 +11,9 @@ Choices for V0 and what we explicitly defer. Prefer interfaces over lock-in.
 | API | FastAPI REST (`python -m argus.api`) | Chat + confirm; WebSocket later |
 | Orchestrator | In-process ReAct loop | No agent framework |
 | LLM | Ollama via OpenAI-compatible `LLMProvider` | Default `qwen3:4b`; `base_url` swap for hosted |
-| STT / TTS | Deferred | After text brain is solid |
-| Voice UX | Deferred | Push-to-talk later |
+| STT | faster-whisper `tiny` on CPU | Optional `[voice]`; keeps GPU for Ollama |
+| TTS | pyttsx3 (SAPI) | Optional `[voice]`; WAV reply |
+| Voice UX | Browser hold-to-talk | `/api/voice` multipart |
 | DB | SQLite + FTS5 | Notes, sessions, audit, pending confirms |
 | Vector memory | Deferred | FTS first |
 | Config | `.env` / `.env.example` | Secrets never committed |

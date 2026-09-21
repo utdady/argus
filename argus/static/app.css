@@ -124,7 +124,7 @@ html, body {
 
 .composer {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   gap: 0.55rem;
   align-items: end;
 }
@@ -168,4 +168,20 @@ button.ghost {
   .shell { padding: 0.75rem; }
   .brand { font-size: 1.35rem; }
   .bubble { max-width: 92%; }
+}
+
+button.ptt {
+  background: color-mix(in srgb, var(--accent) 18%, white);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, white);
+  min-width: 7.5rem;
+}
+button.ptt.recording {
+  background: #9b2c2c;
+  color: #fff;
+  border-color: #9b2c2c;
+}
+@media (max-width: 560px) {
+  .composer { grid-template-columns: 1fr auto; }
+  button.ptt { grid-column: 1 / -1; }
 }

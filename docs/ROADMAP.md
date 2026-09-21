@@ -21,7 +21,7 @@ Single user. Local host. Text orchestrator + permissions. Offline tools.
 - [x] Eval harness (`evals/`) with isolated cases + results JSON
 - [x] Local FastAPI API (`/api/chat`, `/api/confirm`)
 - [x] Browser client
-- [ ] STT / TTS (push-to-talk)
+- [x] STT / TTS (push-to-talk) — faster-whisper CPU + SAPI TTS + `/api/voice`
 - [ ] Soft speaker ID
 - [x] Provider interfaces for LLM (STT/TTS later)
 

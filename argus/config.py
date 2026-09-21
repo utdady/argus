@@ -25,6 +25,9 @@ class Settings:
     empty_reply_retries: int = 1
     max_history_user_turns: int = 12
     temperature: float = 0.0
+    voice_enabled: bool = False
+    stt_model: str = "tiny"
+    stt_device: str = "cpu"
 
 
 def load_settings() -> Settings:
@@ -41,4 +44,8 @@ def load_settings() -> Settings:
         user_id=os.getenv("ARGUS_USER_ID", "owner"),
         user_role=os.getenv("ARGUS_USER_ROLE", "owner"),
         device_id=os.getenv("ARGUS_DEVICE_ID", "laptop_01"),
+        voice_enabled=os.getenv("ARGUS_VOICE_ENABLED", "0").lower()
+        in {"1", "true", "yes", "on"},
+        stt_model=os.getenv("ARGUS_STT_MODEL", "tiny"),
+        stt_device=os.getenv("ARGUS_STT_DEVICE", "cpu"),
     )

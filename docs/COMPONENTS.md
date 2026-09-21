@@ -29,8 +29,8 @@ Update **Status** when a part starts or finishes; keep **Scope** honest so V0 st
 | **Memory** | Notes + porter FTS5 (tokenized OR recall) | SQLite | done | [ORCHESTRATION](ORCHESTRATION.md) |
 | **Storage / audit** | Sessions, messages, audit, pending confirms | `argus/storage/` | done | [BLUEPRINT](BLUEPRINT.md) |
 | **Evals** | JSONL cases + isolated notes + saved results | `evals/` | done | [TECH_STACK](TECH_STACK.md) |
-| **STT** | Audio → transcript | faster-whisper | deferred | After text brain |
-| **TTS** | Reply text → audio | Piper or hosted | deferred | After text brain |
+| **STT** | Audio → transcript | faster-whisper (`tiny`, CPU) | done | optional `[voice]` |
+| **TTS** | Reply text → audio | pyttsx3 / SAPI | done | optional `[voice]` |
 
 ---
 
