@@ -17,8 +17,8 @@ Single user. Local host. Text orchestrator + permissions. Offline tools.
 - [x] Permission checks (`read` / `write` / `side_effect` + confirm)
 - [x] Audit log for tool attempts
 - [x] Tools: `get_time`, `remember`, `recall`, `open_application` (dry-run + confirm)
-- [x] SQLite notes (FTS5) + session history
-- [x] Eval harness (`evals/`)
+- [x] SQLite notes (porter FTS5) + session history (tool_calls persisted)
+- [x] Eval harness (`evals/`) with isolated cases + results JSON
 - [x] Local FastAPI API (`/api/chat`, `/api/confirm`)
 - [x] Browser client
 - [ ] STT / TTS (push-to-talk)

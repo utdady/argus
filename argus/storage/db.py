@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -17,6 +18,108 @@ def confirm_token(session_id: str, tool_name: str, arguments: dict[str, Any]) ->
     canonical = json.dumps(arguments, sort_keys=True, separators=(",", ":"))
     raw = f"{session_id}|{tool_name}|{canonical}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+
+_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "am",
+        "i",
+        "me",
+        "my",
+        "we",
+        "our",
+        "you",
+        "your",
+        "he",
+        "she",
+        "it",
+        "they",
+        "them",
+        "their",
+        "this",
+        "that",
+        "these",
+        "those",
+        "do",
+        "does",
+        "did",
+        "doing",
+        "have",
+        "has",
+        "had",
+        "having",
+        "of",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "from",
+        "with",
+        "about",
+        "into",
+        "over",
+        "after",
+        "and",
+        "or",
+        "but",
+        "if",
+        "as",
+        "by",
+        "what",
+        "where",
+        "when",
+        "who",
+        "whom",
+        "which",
+        "why",
+        "how",
+        "can",
+        "could",
+        "would",
+        "should",
+        "please",
+        "tell",
+        "find",
+        "show",
+        "get",
+        "any",
+        "anything",
+        "notes",
+        "note",
+        "memory",
+        "remember",
+        "recall",
+        "search",
+    }
+)
+
+
+def build_fts_query(query: str) -> str | None:
+    """Tokenize a natural-language query into an FTS5 OR expression."""
+    tokens = re.findall(r"[a-z0-9]+", query.lower().replace("-", " "))
+    terms: list[str] = []
+    seen: set[str] = set()
+    for tok in tokens:
+        if tok in _STOPWORDS or len(tok) < 2:
+            continue
+        if tok in seen:
+            continue
+        seen.add(tok)
+        terms.append(tok)
+    if not terms:
+        return None
+    return " OR ".join(terms)
 
 
 @dataclass
@@ -58,6 +161,7 @@ class Storage:
                 role TEXT NOT NULL,
                 content TEXT,
                 tool_call_id TEXT,
+                tool_calls_json TEXT,
                 created_at TEXT NOT NULL
             );
 
@@ -68,25 +172,6 @@ class Storage:
                 source TEXT NOT NULL CHECK(source IN ('user', 'tool')),
                 created_at TEXT NOT NULL
             );
-
-            CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
-                content,
-                content='notes',
-                content_rowid='id'
-            );
-
-            CREATE TRIGGER IF NOT EXISTS notes_ai AFTER INSERT ON notes BEGIN
-                INSERT INTO notes_fts(rowid, content) VALUES (new.id, new.content);
-            END;
-            CREATE TRIGGER IF NOT EXISTS notes_ad AFTER DELETE ON notes BEGIN
-                INSERT INTO notes_fts(notes_fts, rowid, content)
-                VALUES('delete', old.id, old.content);
-            END;
-            CREATE TRIGGER IF NOT EXISTS notes_au AFTER UPDATE ON notes BEGIN
-                INSERT INTO notes_fts(notes_fts, rowid, content)
-                VALUES('delete', old.id, old.content);
-                INSERT INTO notes_fts(rowid, content) VALUES (new.id, new.content);
-            END;
 
             CREATE TABLE IF NOT EXISTS tool_audit (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,9 +194,75 @@ class Storage:
                 reason TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS schema_meta (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
             """
         )
+
+        cols = {
+            row[1]
+            for row in self._conn.execute("PRAGMA table_info(messages)").fetchall()
+        }
+        if "tool_calls_json" not in cols:
+            self._conn.execute(
+                "ALTER TABLE messages ADD COLUMN tool_calls_json TEXT"
+            )
+
+        self._ensure_notes_fts()
         self._conn.commit()
+
+    def _ensure_notes_fts(self) -> None:
+        row = self._conn.execute(
+            "SELECT value FROM schema_meta WHERE key = 'fts_tokenizer'"
+        ).fetchone()
+        if row and row[0] == "porter":
+            # Still ensure table exists for brand-new DBs that set meta incorrectly.
+            exists = self._conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='notes_fts'"
+            ).fetchone()
+            if exists:
+                return
+
+        self._conn.executescript(
+            """
+            DROP TRIGGER IF EXISTS notes_ai;
+            DROP TRIGGER IF EXISTS notes_ad;
+            DROP TRIGGER IF EXISTS notes_au;
+            DROP TABLE IF EXISTS notes_fts;
+
+            CREATE VIRTUAL TABLE notes_fts USING fts5(
+                content,
+                content='notes',
+                content_rowid='id',
+                tokenize='porter unicode61'
+            );
+
+            CREATE TRIGGER notes_ai AFTER INSERT ON notes BEGIN
+                INSERT INTO notes_fts(rowid, content) VALUES (new.id, new.content);
+            END;
+            CREATE TRIGGER notes_ad AFTER DELETE ON notes BEGIN
+                INSERT INTO notes_fts(notes_fts, rowid, content)
+                VALUES('delete', old.id, old.content);
+            END;
+            CREATE TRIGGER notes_au AFTER UPDATE ON notes BEGIN
+                INSERT INTO notes_fts(notes_fts, rowid, content)
+                VALUES('delete', old.id, old.content);
+                INSERT INTO notes_fts(rowid, content) VALUES (new.id, new.content);
+            END;
+            """
+        )
+        self._conn.execute(
+            "INSERT INTO notes_fts(rowid, content) SELECT id, content FROM notes"
+        )
+        self._conn.execute(
+            """
+            INSERT INTO schema_meta(key, value) VALUES ('fts_tokenizer', 'porter')
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """
+        )
 
     def create_session(self, session_id: str, user_id: str, device_id: str) -> None:
         self._conn.execute(
@@ -126,26 +277,37 @@ class Storage:
         role: str,
         content: str | None,
         tool_call_id: str | None = None,
+        tool_calls: list[dict[str, Any]] | None = None,
     ) -> None:
+        tool_calls_json = (
+            json.dumps(tool_calls, sort_keys=True) if tool_calls else None
+        )
         self._conn.execute(
             """
-            INSERT INTO messages (session_id, role, content, tool_call_id, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO messages
+            (session_id, role, content, tool_call_id, tool_calls_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (session_id, role, content, tool_call_id, _utc_now()),
+            (session_id, role, content, tool_call_id, tool_calls_json, _utc_now()),
         )
         self._conn.commit()
 
     def list_messages(self, session_id: str, limit: int = 40) -> list[dict[str, Any]]:
         rows = self._conn.execute(
             """
-            SELECT role, content, tool_call_id FROM messages
+            SELECT role, content, tool_call_id, tool_calls_json FROM messages
             WHERE session_id = ?
             ORDER BY id DESC LIMIT ?
             """,
             (session_id, limit),
         ).fetchall()
-        return [dict(r) for r in reversed(rows)]
+        out: list[dict[str, Any]] = []
+        for r in reversed(rows):
+            item = dict(r)
+            raw = item.pop("tool_calls_json", None)
+            item["tool_calls"] = json.loads(raw) if raw else []
+            out.append(item)
+        return out
 
     def add_note(self, content: str, user_id: str, source: str = "user") -> int:
         cur = self._conn.execute(
@@ -155,32 +317,50 @@ class Storage:
         self._conn.commit()
         return int(cur.lastrowid)
 
+    def clear_notes(self, user_id: str | None = None) -> None:
+        if user_id is None:
+            self._conn.execute("DELETE FROM notes")
+        else:
+            self._conn.execute("DELETE FROM notes WHERE user_id = ?", (user_id,))
+        self._conn.commit()
+
     def search_notes(self, query: str, user_id: str, limit: int = 5) -> list[dict[str, Any]]:
-        # FTS5 MATCH; fall back to LIKE if query is awkward for FTS
-        try:
-            rows = self._conn.execute(
-                """
-                SELECT n.id, n.content, n.source, n.created_at
-                FROM notes_fts f
-                JOIN notes n ON n.id = f.rowid
-                WHERE notes_fts MATCH ? AND n.user_id = ?
-                ORDER BY n.id DESC
-                LIMIT ?
-                """,
-                (query, user_id, limit),
-            ).fetchall()
-            if rows:
-                return [dict(r) for r in rows]
-        except sqlite3.OperationalError:
-            pass
-        like = f"%{query}%"
+        fts = build_fts_query(query)
+        if fts:
+            try:
+                rows = self._conn.execute(
+                    """
+                    SELECT n.id, n.content, n.source, n.created_at
+                    FROM notes_fts f
+                    JOIN notes n ON n.id = f.rowid
+                    WHERE notes_fts MATCH ? AND n.user_id = ?
+                    ORDER BY rank, n.id DESC
+                    LIMIT ?
+                    """,
+                    (fts, user_id, limit),
+                ).fetchall()
+                if rows:
+                    return [dict(r) for r in rows]
+            except sqlite3.OperationalError:
+                pass
+
+        # LIKE fallback: any token substring match
+        tokens = re.findall(r"[a-z0-9]+", query.lower().replace("-", " "))
+        terms = [t for t in tokens if t not in _STOPWORDS and len(t) >= 2]
+        if not terms:
+            terms = [query.strip()] if query.strip() else []
+        if not terms:
+            return []
+
+        clauses = " OR ".join(["content LIKE ?" for _ in terms])
+        params: list[Any] = [user_id, *[f"%{t}%" for t in terms], limit]
         rows = self._conn.execute(
-            """
+            f"""
             SELECT id, content, source, created_at FROM notes
-            WHERE user_id = ? AND content LIKE ?
+            WHERE user_id = ? AND ({clauses})
             ORDER BY id DESC LIMIT ?
             """,
-            (user_id, like, limit),
+            params,
         ).fetchall()
         return [dict(r) for r in rows]
 

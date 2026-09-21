@@ -27,6 +27,11 @@ LLMProvider.complete(messages, tools) -> Message
 
 Swap local Ollama ↔ hosted OpenAI-compatible endpoint via `ARGUS_LLM_BASE_URL` only — **never** silent failover.
 
+
+## Context window note
+
+`OpenAICompatProvider` sends `extra_body.options.num_ctx`. Confirm in Ollama that the loaded model actually uses 4096; some `/v1` paths ignore `options`. Hosted OpenAI-compatible endpoints may reject the field — strip it when `base_url` is not local.
+
 ## Hardware (modest local GPU)
 
 - ~8 GB system RAM + ~6 GB VRAM

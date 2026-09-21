@@ -13,7 +13,7 @@ from argus.tools.registry import ToolContext, ToolRegistry
 
 SYSTEM_PROMPT = """You are Argus, a helpful personal assistant running locally.
 Use tools when they help answer accurately. Prefer concise replies.
-Available tools are provided via function calling — only call tools that exist.
+Available tools are provided via function calling - only call tools that exist.
 Do not invent tool names. If a side-effect tool needs confirmation, the system will pause.
 """
 
@@ -108,14 +108,8 @@ class Orchestrator:
                 tool_call_id=pending.tool_call_id,
             )
             messages = self._build_messages(session_id)
-            # Ensure assistant tool_call turn exists in history for the provider —
-            # we already stored user turns; re-inject synthetic assistant tool_calls
-            # from pending so the model can continue cleanly.
-            messages = self._inject_pending_assistant_call(messages, pending)
-            messages.append(tool_msg)
             return self._run_loop(session_id, messages)
 
-        # approved
         if spec is None:
             return TurnResult(status="error", reply=f"Unknown tool {pending.tool_name}.")
 
@@ -123,7 +117,7 @@ class Orchestrator:
             args = self.registry.validate_args(pending.tool_name, pending.arguments)
             outcome = self.registry.run(pending.tool_name, args, ctx)
             decision = "allow"
-        except Exception as exc:  # noqa: BLE001 — surface to model/user
+        except Exception as exc:  # noqa: BLE001
             outcome = f"error: {exc}"
             decision = "error"
 
@@ -149,31 +143,7 @@ class Orchestrator:
             tool_call_id=pending.tool_call_id,
         )
         messages = self._build_messages(session_id)
-        messages = self._inject_pending_assistant_call(messages, pending)
-        messages.append(tool_msg)
         return self._run_loop(session_id, messages)
-
-    def _inject_pending_assistant_call(self, messages: list[Message], pending: Any) -> list[Message]:
-        """If history lacks the assistant tool_call, prepend a synthetic one before tool result."""
-        # Find last user message index; if no assistant tool_calls after it, inject.
-        has_call = any(
-            m.role == "assistant" and m.tool_calls for m in messages
-        )
-        if has_call:
-            return messages
-        call = Message(
-            role="assistant",
-            content=None,
-            tool_calls=[
-                ToolCall(
-                    id=pending.tool_call_id,
-                    name=pending.tool_name,
-                    arguments=pending.arguments,
-                )
-            ],
-        )
-        # Insert before last tool message if present, else append
-        return [*messages, call]
 
     def _tool_context(self, session_id: str) -> ToolContext:
         return ToolContext(
@@ -196,9 +166,32 @@ class Orchestrator:
                         tool_call_id=row["tool_call_id"],
                     )
                 )
+            elif role == "assistant":
+                tool_calls = [
+                    ToolCall(
+                        id=tc["id"],
+                        name=tc["name"],
+                        arguments=tc.get("arguments") or {},
+                    )
+                    for tc in (row.get("tool_calls") or [])
+                ]
+                messages.append(
+                    Message(
+                        role="assistant",
+                        content=row["content"],
+                        tool_calls=tool_calls,
+                    )
+                )
             else:
                 messages.append(Message(role=role, content=row["content"]))
         return messages
+
+    @staticmethod
+    def _serialize_tool_calls(tool_calls: list[ToolCall]) -> list[dict[str, Any]]:
+        return [
+            {"id": tc.id, "name": tc.name, "arguments": tc.arguments}
+            for tc in tool_calls
+        ]
 
     def _run_loop(self, session_id: str, messages: list[Message]) -> TurnResult:
         ctx = self._tool_context(session_id)
@@ -220,17 +213,20 @@ class Orchestrator:
                 self.store.add_message(session_id, "assistant", text)
                 return TurnResult(status="completed", reply=text)
 
-            # Persist assistant tool-call turn (content may be empty)
+            # Assign stable ids before persisting so history round-trips.
+            for tc in assistant.tool_calls:
+                tc.id = tc.id or uuid.uuid4().hex
+
             self.store.add_message(
                 session_id,
                 "assistant",
                 assistant.content,
+                tool_calls=self._serialize_tool_calls(assistant.tool_calls),
             )
             messages.append(assistant)
 
             for tc in assistant.tool_calls:
-                tc_id = tc.id or uuid.uuid4().hex
-                tc.id = tc_id
+                tc_id = tc.id
                 spec = self.registry.get(tc.name)
 
                 try:
@@ -314,7 +310,6 @@ class Orchestrator:
                         pending_args=args_dict,
                     )
 
-                # ALLOW
                 try:
                     outcome = self.registry.run(tc.name, args_model, ctx)
                 except Exception as exc:  # noqa: BLE001

@@ -26,7 +26,7 @@ def test_validate_get_time_empty():
 
 def test_validate_remember():
     reg = build_builtin_registry()
-    args = reg.validate_args("remember", {"content": "hello", "source": "user"})
+    args = reg.validate_args("remember", {"content": "hello"})
     assert args.content == "hello"
 
 
@@ -110,3 +110,26 @@ def test_permission_deny_wrong_role():
     policy = PermissionPolicy()
     result = policy.decide(spec, role="guest")
     assert result.decision == Decision.DENY
+
+
+def test_remember_provenance_forced(tmp_path):
+    from argus.storage.db import Storage
+    from argus.tools.registry import ToolContext
+
+    store = Storage(tmp_path / "prov.db")
+    reg = build_builtin_registry()
+    ctx = ToolContext(
+        user_id="owner",
+        role="owner",
+        device_id="dev",
+        session_id="s",
+        store=store,
+    )
+    # Even if a model somehow passed source, schema no longer accepts it as input
+    # for provenance — execute always writes source=user.
+    args = reg.validate_args("remember", {"content": "secret note"})
+    out = reg.run("remember", args, ctx)
+    assert "Saved note" in out
+    rows = store._conn.execute("SELECT source FROM notes").fetchall()
+    assert rows[0]["source"] == "user"
+    store.close()

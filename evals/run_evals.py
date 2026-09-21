@@ -4,6 +4,7 @@ import argparse
 import json
 import time
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from argus.config import load_settings
@@ -24,29 +25,40 @@ def load_cases(path: Path) -> list[dict]:
     return cases
 
 
-def run_case(orch: Orchestrator, case: dict) -> tuple[bool, str, float]:
+def run_case(orch: Orchestrator, case: dict) -> tuple[bool, str, float, dict]:
+    # Isolate memory between cases so order does not leak.
+    orch.store.clear_notes()
+    for note in case.get("seed_notes") or []:
+        orch.store.add_note(note, user_id=orch.settings.user_id, source="user")
+
     session_id = uuid.uuid4().hex
     t0 = time.perf_counter()
     result = orch.handle_user_message(session_id, case["prompt"])
     elapsed = time.perf_counter() - t0
 
+    audit_rows = orch.store._conn.execute(
+        "SELECT tool_name, decision, arguments_json, outcome FROM tool_audit WHERE session_id = ?",
+        (session_id,),
+    ).fetchall()
+    audit = [dict(r) for r in audit_rows]
+    record = {
+        "id": case["id"],
+        "ok": False,
+        "elapsed_s": round(elapsed, 3),
+        "status": result.status,
+        "reply": result.reply,
+        "pending_tool": result.pending_tool,
+        "audit": audit,
+    }
+
     if case.get("expect_no_tool"):
-        ok = result.status == "completed" and result.pending_tool is None
-        rows = orch.store._conn.execute(
-            "SELECT tool_name FROM tool_audit WHERE session_id = ?",
-            (session_id,),
-        ).fetchall()
-        if rows:
-            ok = False
-        detail = f"status={result.status} tools={[r['tool_name'] for r in rows]}"
-        return ok, detail, elapsed
+        ok = result.status == "completed" and result.pending_tool is None and not audit
+        detail = f"status={result.status} tools={[r['tool_name'] for r in audit]}"
+        record["ok"] = ok
+        return ok, detail, elapsed, record
 
     if case.get("expect_deny"):
-        rows = orch.store._conn.execute(
-            "SELECT decision FROM tool_audit WHERE session_id = ?",
-            (session_id,),
-        ).fetchall()
-        decisions = [r["decision"] for r in rows]
+        decisions = [r["decision"] for r in audit]
         reply = result.reply.lower()
         ok = (
             "deny" in decisions
@@ -54,27 +66,45 @@ def run_case(orch: Orchestrator, case: dict) -> tuple[bool, str, float]:
             or "allowlist" in reply
             or ("cannot" in reply and "open" in reply)
         )
-        return ok, f"decisions={decisions} reply={result.reply[:80]!r}", elapsed
+        detail = f"decisions={decisions} reply={result.reply[:80]!r}"
+        record["ok"] = ok
+        return ok, detail, elapsed, record
 
     expected = case.get("expect_tool")
     if case.get("expect_confirm") or expected == "open_application":
         ok = result.status == "awaiting_confirm" and (
             result.pending_tool == expected or (expected is None and result.pending_tool)
         )
+        if ok and expected:
+            ok = any(
+                r["tool_name"] == expected and r["decision"] == "confirm" for r in audit
+            )
         detail = f"status={result.status} pending={result.pending_tool}"
-        return ok, detail, elapsed
+        record["ok"] = ok
+        return ok, detail, elapsed, record
 
     if expected:
-        rows = orch.store._conn.execute(
-            "SELECT tool_name, decision FROM tool_audit WHERE session_id = ?",
-            (session_id,),
-        ).fetchall()
-        names = [r["tool_name"] for r in rows]
-        ok = expected in names and result.status in {"completed", "awaiting_confirm"}
-        detail = f"tools={names} status={result.status}"
-        return ok, detail, elapsed
+        allowed = [
+            r
+            for r in audit
+            if r["tool_name"] == expected and r["decision"] in {"allow", "confirm"}
+        ]
+        ok = bool(allowed) and result.status in {"completed", "awaiting_confirm"}
+        if ok and case.get("expect_args_contains"):
+            blob = " ".join(r["arguments_json"] for r in allowed).lower()
+            ok = all(s.lower() in blob for s in case["expect_args_contains"])
+        if ok and case.get("expect_reply_contains"):
+            reply = result.reply.lower()
+            ok = all(s.lower() in reply for s in case["expect_reply_contains"])
+        detail = (
+            f"tools={[(r['tool_name'], r['decision']) for r in audit]} "
+            f"status={result.status}"
+        )
+        record["ok"] = ok
+        return ok, detail, elapsed, record
 
-    return True, "no expectation", elapsed
+    record["ok"] = True
+    return True, "no expectation", elapsed, record
 
 
 def main() -> int:
@@ -87,6 +117,12 @@ def main() -> int:
     parser.add_argument("--model", default=None, help="Override ARGUS_MODEL")
     parser.add_argument("--limit", type=int, default=0, help="Run first N cases (0=all)")
     parser.add_argument("--id", action="append", default=[], help="Run only case id(s)")
+    parser.add_argument(
+        "--save",
+        type=Path,
+        default=Path(__file__).with_name("results") / "latest.json",
+        help="Write JSON results (default: evals/results/latest.json)",
+    )
     args = parser.parse_args()
 
     settings = load_settings()
@@ -123,9 +159,11 @@ def main() -> int:
     print(f"model={model} cases={len(cases)}")
     passed = 0
     latencies: list[float] = []
+    records: list[dict] = []
     for case in cases:
-        ok, detail, elapsed = run_case(orch, case)
+        ok, detail, elapsed, record = run_case(orch, case)
         latencies.append(elapsed)
+        records.append(record)
         mark = "PASS" if ok else "FAIL"
         if ok:
             passed += 1
@@ -136,6 +174,20 @@ def main() -> int:
     avg = sum(latencies) / len(latencies) if latencies else 0.0
     print()
     print(f"pass_rate={passed}/{total} ({rate:.1f}%)  avg_latency={avg:.2f}s")
+
+    payload = {
+        "model": model,
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "pass_rate": f"{passed}/{total}",
+        "pass_pct": round(rate, 1),
+        "avg_latency_s": round(avg, 2),
+        "cases": records,
+    }
+    if args.save:
+        args.save.parent.mkdir(parents=True, exist_ok=True)
+        args.save.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"saved {args.save}")
+
     store.close()
     try:
         db_path.unlink(missing_ok=True)

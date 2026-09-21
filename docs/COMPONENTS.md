@@ -22,13 +22,13 @@ Update **Status** when a part starts or finishes; keep **Scope** honest so V0 st
 |-----------|------|-------|--------|--------|
 | **Client** | Text REPL + browser chat | `python -m argus.cli` / `http://127.0.0.1:8787` | done | [README](../README.md) |
 | **API** | Door to the brain | FastAPI REST (`argus/api.py`) | done | [README](../README.md) |
-| **Orchestrator** | ReAct loop, confirm pause/resume | `argus/orchestrator/` | done | [ORCHESTRATION](ORCHESTRATION.md) |
+| **Orchestrator** | ReAct loop, confirm pause/resume; tool_calls persisted | `argus/orchestrator/` | done | [ORCHESTRATION](ORCHESTRATION.md) |
 | **LLM provider** | OpenAI-compatible → Ollama | `argus/providers/` | done | [TECH_STACK](TECH_STACK.md) |
 | **Tools** | `get_time`, `remember`, `recall`, `open_application` dry-run | `argus/tools/` | done | [ORCHESTRATION](ORCHESTRATION.md) |
 | **Permissions** | allow / confirm / deny in code | `argus/permissions/` | done | [ORCHESTRATION](ORCHESTRATION.md) |
-| **Memory** | Notes + FTS5 via remember/recall | SQLite | done | [ORCHESTRATION](ORCHESTRATION.md) |
+| **Memory** | Notes + porter FTS5 (tokenized OR recall) | SQLite | done | [ORCHESTRATION](ORCHESTRATION.md) |
 | **Storage / audit** | Sessions, messages, audit, pending confirms | `argus/storage/` | done | [BLUEPRINT](BLUEPRINT.md) |
-| **Evals** | JSONL cases + pass rate / latency | `evals/` | done | [TECH_STACK](TECH_STACK.md) |
+| **Evals** | JSONL cases + isolated notes + saved results | `evals/` | done | [TECH_STACK](TECH_STACK.md) |
 | **STT** | Audio → transcript | faster-whisper | deferred | After text brain |
 | **TTS** | Reply text → audio | Piper or hosted | deferred | After text brain |
 

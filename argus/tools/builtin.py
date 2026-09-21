@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Literal
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from argus.tools.registry import Risk, ToolContext, ToolRegistry, ToolSpec
@@ -19,10 +17,6 @@ class GetTimeInput(BaseModel):
 
 class RememberInput(BaseModel):
     content: str = Field(..., min_length=1, description="Fact or note to store")
-    source: Literal["user", "tool"] = Field(
-        default="user",
-        description="Provenance: user-said vs tool-derived",
-    )
 
 
 class RecallInput(BaseModel):
@@ -50,10 +44,11 @@ def _get_time(_args: GetTimeInput, _ctx: ToolContext) -> str:
 
 
 def _remember(args: RememberInput, ctx: ToolContext) -> str:
+    # Provenance is enforced in code — models must not choose source.
     note_id = ctx.store.add_note(
         content=args.content,
         user_id=ctx.user_id,
-        source=args.source,
+        source="user",
     )
     return f"Saved note #{note_id}."
 
