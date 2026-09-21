@@ -60,6 +60,8 @@ class OpenAICompatProvider:
                 tool_calls.append(
                     ToolCall(id=tc.id or "", name=tc.function.name or "", arguments=args)
                 )
+        # If content is empty with no tool_calls (seen with some Qwen3/Ollama
+        # "thinking" responses), leave it empty so Orchestrator can nudge+retry.
         return Message(
             role="assistant",
             content=choice.content,

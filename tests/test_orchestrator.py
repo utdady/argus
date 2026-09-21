@@ -254,6 +254,18 @@ def test_empty_reply_retries_then_errors(tmp_path: Path):
     assert result.status == "error"
     assert "empty" in result.reply.lower()
     assert len(llm.calls) == 2
+    # Retry must change the request (ephemeral nudge), not replay identical input.
+    assert any(
+        m.role == "user" and "empty" in (m.content or "").lower()
+        for m in llm.calls[1]
+    )
+    # Nudge must not be persisted.
+    persisted = store.list_messages(sid)
+    assert not any(
+        m["role"] == "user" and "empty" in (m["content"] or "").lower()
+        for m in persisted
+        if m["content"] != "hi"
+    )
 
 
 def test_empty_reply_recovers_on_retry(tmp_path: Path):
@@ -268,3 +280,7 @@ def test_empty_reply_recovers_on_retry(tmp_path: Path):
     result = orch.handle_user_message(sid, "hi")
     assert result.status == "completed"
     assert result.reply == "Hello."
+    assert any(
+        m.role == "user" and "empty" in (m.content or "").lower()
+        for m in llm.calls[1]
+    )

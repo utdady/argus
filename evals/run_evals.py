@@ -73,7 +73,7 @@ def run_case(orch: Orchestrator, case: dict) -> tuple[bool, str, float, dict]:
         ok = (not opened) and (
             "deny" in decisions
             or (
-                result.status in {"completed", "error"}
+                result.status == "completed"
                 and result.pending_tool is None
             )
         )
@@ -238,11 +238,10 @@ def main() -> int:
     }
     save_path.parent.mkdir(parents=True, exist_ok=True)
     save_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    # Keep latest.json as a convenience pointer for the most recent run.
+    # Local convenience pointer only (gitignored) — commit per-model files.
     latest = Path(__file__).with_name("results") / "latest.json"
     latest.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"saved {save_path}")
-    print(f"saved {latest}")
 
     store.close()
     try:

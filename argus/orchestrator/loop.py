@@ -21,6 +21,11 @@ _SKIPPED_WAITING = json.dumps(
     {"ok": False, "error": "skipped, waiting for confirmation of another tool"}
 )
 
+_EMPTY_NUDGE = (
+    "Your previous reply was empty. Respond with visible assistant text "
+    "or a tool call now. Do not answer with only internal reasoning."
+)
+
 
 @dataclass
 class TurnResult:
@@ -234,22 +239,31 @@ class Orchestrator:
         tools = self.registry.openai_tools()
         schema_retries_left = self.settings.schema_retries
         empty_retries_left = self.settings.empty_reply_retries
+        call_temperature = self.settings.temperature
 
         for _ in range(self.settings.max_iterations):
             try:
                 assistant = self.llm.complete(
                     messages,
                     tools=tools,
-                    temperature=self.settings.temperature,
+                    temperature=call_temperature,
                 )
             except Exception as exc:  # noqa: BLE001
                 return TurnResult(status="error", reply=f"LLM error: {exc}")
+            # Reset override after each call; empty-retry may bump it again.
+            call_temperature = self.settings.temperature
 
             if not assistant.tool_calls:
                 text = (assistant.content or "").strip()
                 if not text:
                     if empty_retries_left > 0:
                         empty_retries_left -= 1
+                        # Ephemeral nudge — not persisted to session history.
+                        messages = [
+                            *messages,
+                            Message(role="user", content=_EMPTY_NUDGE),
+                        ]
+                        call_temperature = max(self.settings.temperature, 0.2)
                         continue
                     return TurnResult(
                         status="error",

@@ -45,3 +45,6 @@ agent-transcripts/
 
 # Ollama / local runtime leftovers
 Modelfile.local
+
+# Eval convenience symlink-style output (commit per-model files only)
+evals/results/latest.json
