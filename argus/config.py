@@ -28,6 +28,8 @@ class Settings:
     voice_enabled: bool = False
     stt_model: str = "tiny"
     stt_device: str = "cpu"
+    tts_provider: str = "edge"  # edge | sapi
+    tts_voice: str = "en-GB-RyanNeural"
 
 
 def load_settings() -> Settings:
@@ -48,4 +50,6 @@ def load_settings() -> Settings:
         in {"1", "true", "yes", "on"},
         stt_model=os.getenv("ARGUS_STT_MODEL", "tiny"),
         stt_device=os.getenv("ARGUS_STT_DEVICE", "cpu"),
+        tts_provider=os.getenv("ARGUS_TTS_PROVIDER", "edge").lower(),
+        tts_voice=os.getenv("ARGUS_TTS_VOICE", "en-GB-RyanNeural"),
     )

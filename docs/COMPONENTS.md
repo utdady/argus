@@ -30,7 +30,7 @@ Update **Status** when a part starts or finishes; keep **Scope** honest so V0 st
 | **Storage / audit** | Sessions, messages, audit, pending confirms | `argus/storage/` | done | [BLUEPRINT](BLUEPRINT.md) |
 | **Evals** | JSONL cases + isolated notes + saved results | `evals/` | done | [TECH_STACK](TECH_STACK.md) |
 | **STT** | Audio → transcript | faster-whisper (`tiny`, CPU) | done | optional `[voice]` |
-| **TTS** | Reply text → audio | pyttsx3 / SAPI | done | optional `[voice]` |
+| **TTS** | Reply text → audio | edge-tts `en-GB-RyanNeural` (SAPI fallback) | done | optional `[voice]` |
 
 ---
 

@@ -9,10 +9,13 @@ from argus.config import Settings
 from argus.permissions.policy import Decision, PermissionPolicy
 from argus.providers.base import LLMProvider, Message, ToolCall
 from argus.storage.db import Storage
+from argus.textutil import strip_emojis
 from argus.tools.registry import ToolContext, ToolRegistry
 
 SYSTEM_PROMPT = """You are Argus, a helpful personal assistant running locally.
+Speak like a polished upper-class British butler: courteous, precise, composed, with light dry wit when appropriate — never servile or cartoonish.
 Use tools when they help answer accurately. Prefer concise replies.
+Never use emojis, emoticons, or decorative symbols in any reply.
 Available tools are provided via function calling - only call tools that exist.
 Do not invent tool names. If a side-effect tool needs confirmation, the system will pause.
 """
@@ -269,6 +272,7 @@ class Orchestrator:
                         status="error",
                         reply="LLM returned an empty reply after retries.",
                     )
+                text = strip_emojis(text)
                 self.store.add_message(session_id, "assistant", text)
                 return TurnResult(status="completed", reply=text)
 

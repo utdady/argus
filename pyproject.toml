@@ -25,6 +25,7 @@ dev = [
 voice = [
     "faster-whisper>=1.0.0",
     "pyttsx3>=2.90",
+    "edge-tts>=6.1.0",
     "python-multipart>=0.0.9",
 ]
 

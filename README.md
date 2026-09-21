@@ -92,7 +92,7 @@ pip install -e ".[voice]"
 python -m argus.api
 ```
 
-Open the UI and use **Hold to talk**. STT runs on CPU by default so Ollama can keep the GPU. First run downloads the Whisper `tiny` model. WebM uploads need ffmpeg on PATH for decoding.
+Open the UI and use **Hold to talk**. STT runs on CPU by default so Ollama can keep the GPU. TTS defaults to Edge neural British voice `en-GB-RyanNeural` (set `ARGUS_TTS_PROVIDER=sapi` for offline Windows voice). First run downloads the Whisper `tiny` model. The browser PTT control sends WAV (no ffmpeg needed).
 
 ### Tests (no LLM required)
 

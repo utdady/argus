@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import base64
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -11,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from argus.config import load_settings
+from argus.textutil import strip_emojis
 from argus.factory import build_orchestrator, build_voice
 from argus.orchestrator.loop import Orchestrator, TurnResult
 from argus.providers.base import SpeechToText, TextToSpeech
@@ -124,6 +127,7 @@ def create_app(
         o: Orchestrator = app.state.orch
         session_id = body.session_id or o.new_session()
         result = o.handle_user_message(session_id, body.message)
+        result.reply = strip_emojis(result.reply)
         return _to_response(session_id, result)
 
     @app.post("/api/confirm", response_model=TurnResponse)
@@ -136,6 +140,7 @@ def create_app(
                 raise HTTPException(status_code=400, detail="No pending confirmation")
             token = pending.token
         result = o.resolve_confirm(body.session_id, token, body.approved)
+        result.reply = strip_emojis(result.reply)
         return _to_response(body.session_id, result)
 
     @app.post("/api/voice", response_model=VoiceResponse)
@@ -162,11 +167,14 @@ def create_app(
         o: Orchestrator = app.state.orch
         sid = session_id or o.new_session()
         result = o.handle_user_message(sid, transcript)
+        result.reply = strip_emojis(result.reply)
         audio_b64 = None
         audio_mime = None
         if result.status == "completed" and result.reply:
             try:
-                wav, audio_mime = app.state.tts.synthesize(result.reply)
+                wav, audio_mime = await asyncio.to_thread(
+                    app.state.tts.synthesize, result.reply
+                )
                 if wav:
                     audio_b64 = base64.b64encode(wav).decode("ascii")
             except Exception as exc:  # noqa: BLE001
@@ -183,7 +191,7 @@ def create_app(
             pending_args=result.pending_args,
             transcript=transcript,
             audio_base64=audio_b64,
-            audio_mime=audio_mime if audio_b64 else None,
+            audio_mime=audio_mime,
             voice_enabled=True,
         )
 

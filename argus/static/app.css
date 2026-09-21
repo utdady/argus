@@ -97,10 +97,81 @@ html, body {
   margin-bottom: 0.25rem;
 }
 
-.bubble.status {
+.bubble .status {
   font-size: 0.75rem;
   color: var(--muted);
   margin-top: 0.35rem;
+}
+
+.bubble .body {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.voice-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.15rem;
+}
+
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  flex: 1;
+  min-width: 0;
+}
+
+.waveform span {
+  display: inline-block;
+  width: 3px;
+  height: var(--h, 8px);
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--accent) 70%, #1a2330);
+  opacity: 0.85;
+}
+
+.voice-chevron {
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.voice-chevron:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.voice-chevron.collapsed {
+  transform: rotate(180deg);
+}
+
+.voice-transcript {
+  margin-top: 0.45rem;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.voice-transcript.collapsed {
+  display: none;
 }
 
 .confirm {

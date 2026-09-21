@@ -31,6 +31,23 @@ def build_orchestrator(settings: Settings | None = None) -> tuple[Orchestrator, 
     return orch, store
 
 
+def _build_tts(settings: Settings) -> TextToSpeech:
+    provider = (settings.tts_provider or "edge").lower()
+    if provider == "sapi":
+        from argus.providers.sapi_tts import SapiTTS
+
+        return SapiTTS()
+    # Default: British neural butler voice via Edge TTS.
+    try:
+        from argus.providers.edge_tts_provider import EdgeTTS
+
+        return EdgeTTS(voice=settings.tts_voice)
+    except Exception:
+        from argus.providers.sapi_tts import SapiTTS
+
+        return SapiTTS()
+
+
 def build_voice(
     settings: Settings | None = None,
 ) -> tuple[SpeechToText, TextToSpeech, bool]:
@@ -39,7 +56,6 @@ def build_voice(
     if not settings.voice_enabled:
         return NullSTT(), NullTTS(), False
     try:
-        from argus.providers.sapi_tts import SapiTTS
         from argus.providers.whisper_stt import FasterWhisperSTT
     except Exception:
         return NullSTT(), NullTTS(), False
@@ -48,7 +64,7 @@ def build_voice(
             model_size=settings.stt_model,
             device=settings.stt_device,
         )
-        tts = SapiTTS()
+        tts = _build_tts(settings)
         return stt, tts, True
     except Exception:
         return NullSTT(), NullTTS(), False

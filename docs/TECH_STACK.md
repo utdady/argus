@@ -12,7 +12,7 @@ Choices for V0 and what we explicitly defer. Prefer interfaces over lock-in.
 | Orchestrator | In-process ReAct loop | No agent framework |
 | LLM | Ollama via OpenAI-compatible `LLMProvider` | Default `qwen3:4b`; `base_url` swap for hosted |
 | STT | faster-whisper `tiny` on CPU | Optional `[voice]`; keeps GPU for Ollama |
-| TTS | pyttsx3 (SAPI) | Optional `[voice]`; WAV reply |
+| TTS | edge-tts British neural (default) / SAPI fallback | `en-GB-RyanNeural` butler-like; needs network |
 | Voice UX | Browser hold-to-talk | `/api/voice` multipart |
 | DB | SQLite + FTS5 | Notes, sessions, audit, pending confirms |
 | Vector memory | Deferred | FTS first |

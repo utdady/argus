@@ -38,7 +38,14 @@ class FasterWhisperSTT:
     def transcribe(self, audio: bytes, *, mime_type: str = "audio/wav") -> str:
         if not audio:
             return ""
-        suffix = ".webm" if "webm" in mime_type else ".wav"
+        mime = (mime_type or "").lower()
+        if "wav" in mime or audio[:4] == b"RIFF":
+            suffix = ".wav"
+        elif "webm" in mime:
+            # PyAV needs ffmpeg for many WebM streams; prefer client WAV.
+            suffix = ".webm"
+        else:
+            suffix = ".wav"
         model = self._ensure_model()
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp.write(audio)
@@ -47,5 +54,13 @@ class FasterWhisperSTT:
             segments, _info = model.transcribe(str(path), beam_size=1)
             text = " ".join(seg.text.strip() for seg in segments).strip()
             return text
+        except Exception as exc:
+            hint = ""
+            if suffix == ".webm":
+                hint = (
+                    " WebM decode failed (ffmpeg often required). "
+                    "Use WAV from the browser PTT button."
+                )
+            raise RuntimeError(f"STT decode failed: {exc}.{hint}") from exc
         finally:
             path.unlink(missing_ok=True)
