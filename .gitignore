@@ -34,3 +34,14 @@ models/
 *.wav
 *.mp3
 *.ogg
+
+# Local / private (never commit)
+local/
+private/
+*.log
+.cursor/
+.agent/
+agent-transcripts/
+
+# Ollama / local runtime leftovers
+Modelfile.local

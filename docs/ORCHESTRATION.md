@@ -38,7 +38,7 @@ User (text or push-to-talk audio)
 ## Context object (every turn)
 
 ```text
-user_id          # V0: single local user (e.g. "addy")
+user_id          # V0: single local user (e.g. "owner")
 device_id        # V0: "laptop_01"
 room             # optional; null in V0
 session_id

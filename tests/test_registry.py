@@ -65,6 +65,14 @@ def test_open_application_allowlist():
     assert "rm" not in ALLOWED_APPS
 
 
+def test_open_application_rejects_unknown():
+    import pytest
+
+    reg = build_builtin_registry()
+    with pytest.raises(ValueError, match="allowlist"):
+        reg.validate_args("open_application", {"app": "totally_fake_app_xyz"})
+
+
 def test_permission_allow_read():
     reg = build_builtin_registry()
     spec = reg.get("get_time")

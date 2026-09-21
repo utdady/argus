@@ -20,8 +20,8 @@ Update **Status** when a part starts or finishes; keep **Scope** honest so V0 st
 
 | Component | Role | Scope | Status | Detail |
 |-----------|------|-------|--------|--------|
-| **Client** | Text REPL | `python -m argus.cli` | done | [README](../README.md) |
-| **API** | Door to the brain | FastAPI | deferred | After CLI brain |
+| **Client** | Text REPL + browser chat | `python -m argus.cli` / `http://127.0.0.1:8787` | done | [README](../README.md) |
+| **API** | Door to the brain | FastAPI REST (`argus/api.py`) | done | [README](../README.md) |
 | **Orchestrator** | ReAct loop, confirm pause/resume | `argus/orchestrator/` | done | [ORCHESTRATION](ORCHESTRATION.md) |
 | **LLM provider** | OpenAI-compatible → Ollama | `argus/providers/` | done | [TECH_STACK](TECH_STACK.md) |
 | **Tools** | `get_time`, `remember`, `recall`, `open_application` dry-run | `argus/tools/` | done | [ORCHESTRATION](ORCHESTRATION.md) |
@@ -38,7 +38,7 @@ Update **Status** when a part starts or finishes; keep **Scope** honest so V0 st
 
 | Component | Role | Scope | Status | Detail |
 |-----------|------|-------|--------|--------|
-| **Speaker ID** | Soft “is this Addy?” match | One enrolled voice | deferred | [ORCHESTRATION](ORCHESTRATION.md) |
+| **Speaker ID** | Soft "is this the enrolled user?" match | One enrolled voice | deferred | [ORCHESTRATION](ORCHESTRATION.md) |
 
 ---
 
@@ -84,7 +84,7 @@ Update **Status** when a part starts or finishes; keep **Scope** honest so V0 st
 ## How parts connect (V0)
 
 ```text
-CLI → Orchestrator → LLM provider (Ollama)
+CLI / Browser → FastAPI → Orchestrator → LLM provider (Ollama)
             ↓
    Permissions → Tools
             ↓
@@ -106,4 +106,5 @@ Full diagrams: [DIAGRAMS.md](DIAGRAMS.md).
 | Permissions | `argus/permissions/` |
 | Storage | `argus/storage/` |
 | Evals | `evals/` |
-| API / web client | not yet |
+| API | `argus/api.py` |
+| Browser UI | `argus/static/` |

@@ -7,7 +7,8 @@ Choices for V0 and what we explicitly defer. Prefer interfaces over lock-in.
 | Layer | Choice | Notes |
 |-------|--------|--------|
 | Language | Python 3.11+ | `pyproject.toml` package `argus` |
-| Client | CLI (`python -m argus.cli`) | FastAPI / browser deferred |
+| Client | CLI + browser (`argus/static`) | Local only on 127.0.0.1 |
+| API | FastAPI REST (`python -m argus.api`) | Chat + confirm; WebSocket later |
 | Orchestrator | In-process ReAct loop | No agent framework |
 | LLM | Ollama via OpenAI-compatible `LLMProvider` | Default `qwen3:4b`; `base_url` swap for hosted |
 | STT / TTS | Deferred | After text brain is solid |
@@ -26,7 +27,7 @@ LLMProvider.complete(messages, tools) -> Message
 
 Swap local Ollama ↔ hosted OpenAI-compatible endpoint via `ARGUS_LLM_BASE_URL` only — **never** silent failover.
 
-## Hardware (ASUS)
+## Hardware (modest local GPU)
 
 - ~8 GB system RAM + ~6 GB VRAM
 - Default model class: **~4B** quantized; **8B** stretch eval only
@@ -36,8 +37,8 @@ Swap local Ollama ↔ hosted OpenAI-compatible endpoint via `ARGUS_LLM_BASE_URL`
 
 | Item | Why defer |
 |------|-----------|
-| FastAPI / WebSocket | Prove loop in CLI first |
-| Browser / phone clients | After API |
+| WebSocket streaming | REST is enough for V0 chat |
+| Phone clients | After laptop browser |
 | Weather / web_search | Keep V0 offline |
 | Real app launch | Dry-run confirm only |
 | PostgreSQL / vectors | Premature |

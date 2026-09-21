@@ -36,7 +36,7 @@ def load_settings() -> Settings:
         model=os.getenv("ARGUS_MODEL", "qwen3:4b"),
         num_ctx=int(os.getenv("ARGUS_NUM_CTX", "4096")),
         db_path=db,
-        user_id=os.getenv("ARGUS_USER_ID", "addy"),
+        user_id=os.getenv("ARGUS_USER_ID", "owner"),
         user_role=os.getenv("ARGUS_USER_ROLE", "owner"),
-        device_id=os.getenv("ARGUS_DEVICE_ID", "asus_01"),
+        device_id=os.getenv("ARGUS_DEVICE_ID", "laptop_01"),
     )

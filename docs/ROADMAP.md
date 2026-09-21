@@ -9,7 +9,7 @@ Checkboxes update when something works end-to-end — not when a file is created
 
 ## V0 — Laptop brain (CLI + Ollama)
 
-Single user. ASUS host. Text orchestrator + permissions. Offline tools.
+Single user. Local host. Text orchestrator + permissions. Offline tools.
 
 - [x] Project scaffold (orchestrator, providers, tools, storage)
 - [x] Text CLI → LLM → reply
@@ -19,7 +19,8 @@ Single user. ASUS host. Text orchestrator + permissions. Offline tools.
 - [x] Tools: `get_time`, `remember`, `recall`, `open_application` (dry-run + confirm)
 - [x] SQLite notes (FTS5) + session history
 - [x] Eval harness (`evals/`)
-- [ ] Browser client
+- [x] Local FastAPI API (`/api/chat`, `/api/confirm`)
+- [x] Browser client
 - [ ] STT / TTS (push-to-talk)
 - [ ] Soft speaker ID
 - [x] Provider interfaces for LLM (STT/TTS later)

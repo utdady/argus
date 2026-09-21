@@ -2,7 +2,7 @@
 
 Personal household AI — one central brain, many devices.
 
-**Current focus:** V0 brain on the ASUS (CLI + Ollama + tools + permissions). Voice and FastAPI come later.
+**Current focus:** V0 brain on a local laptop (CLI + browser + Ollama + tools + permissions). Voice comes later.
 
 ## Status
 
@@ -31,7 +31,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/COMPONENTS.md](docs/COMPONENTS.
 
 1. **Devices are ears and mouths. The server is the brain.**
 2. **Permissions and memory access are enforced in code**, not by prompting the LLM.
-3. **Start on one machine (ASUS).** Scale to rooms and household members later.
+3. **Start on one machine.** Scale to rooms and household members later.
 4. **Providers are swappable** (STT / LLM / TTS) behind thin interfaces.
 5. **No silent cloud failover.** Hosted LLM is an explicit `.env` change only.
 
@@ -40,7 +40,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/COMPONENTS.md](docs/COMPONENTS.
 ### Prerequisites
 
 - Python 3.11+
-- [Ollama](https://ollama.com) installed on the **ASUS**
+- [Ollama](https://ollama.com) installed locally
 - A small local model (default intent: `qwen3:4b` — use whatever 3–4B tag you pull)
 
 ```bash
@@ -72,7 +72,17 @@ Commands inside the REPL:
 - `/confirm yes` or `/confirm no` when a side-effect tool is pending
 - `/quit`
 
+### Browser chat (local API)
+
+```bash
+python -m argus.api
+# or: argus-serve
+```
+
+Open [http://127.0.0.1:8787](http://127.0.0.1:8787). Same orchestrator as the CLI (sessions, tools, `/api/confirm` for side-effects). Bound to localhost only.
+
 ### Tests (no LLM required)
+
 
 ```bash
 pytest
@@ -85,7 +95,7 @@ python -m evals.run_evals
 python -m evals.run_evals --model qwen3:4b --limit 10
 ```
 
-## Running on the ASUS
+## Running on a modest GPU laptop
 
 Hardware target: **8 GB system RAM + ~6 GB VRAM**.
 
@@ -93,7 +103,7 @@ Hardware target: **8 GB system RAM + ~6 GB VRAM**.
 - Keep `ARGUS_NUM_CTX=4096` (or lower) so the context cache does not thrash VRAM.
 - Close heavy apps; load **one** Ollama model at a time.
 - Expect slow tokens — that is normal on this box.
-- Run everything on the ASUS for V0. Do not expose Ollama on the LAN (no auth). A future FastAPI layer is where remote clients and auth belong.
+- Run everything locally for V0. Do not expose Ollama on the LAN (no auth). The local FastAPI app (`python -m argus.api`) is bound to 127.0.0.1.
 - Hosted OpenAI-compatible endpoints work via `ARGUS_LLM_BASE_URL`, but only as an **explicit** config change (useful as an eval baseline), never as automatic failover.
 
 ## V0 success criteria (this slice)
@@ -104,4 +114,4 @@ Hardware target: **8 GB system RAM + ~6 GB VRAM**.
 4. Tool attempts are audited  
 5. `pytest` passes; eval harness reports pass rate / latency  
 
-Voice (STT/TTS) and browser client are **not** part of this slice.
+Voice (STT/TTS) is **not** part of this slice. Browser chat over local FastAPI is included.

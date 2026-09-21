@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Argus</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="brand">Argus</div>
+      <div class="meta" id="meta">connecting…</div>
+    </header>
+
+    <main class="transcript" id="transcript" aria-live="polite"></main>
+
+    <section class="confirm hidden" id="confirmBar">
+      <p id="confirmText"></p>
+      <div class="confirm-actions">
+        <button type="button" id="btnYes">Confirm</button>
+        <button type="button" class="ghost" id="btnNo">Deny</button>
+      </div>
+    </section>
+
+    <form class="composer" id="form">
+      <textarea id="input" rows="1" placeholder="Message Argus…" autocomplete="off"></textarea>
+      <button type="submit" id="send">Send</button>
+    </form>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

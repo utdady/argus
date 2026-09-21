@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from argus.tools.registry import Risk, ToolContext, ToolRegistry, ToolSpec
 
@@ -32,6 +32,16 @@ class RecallInput(BaseModel):
 
 class OpenApplicationInput(BaseModel):
     app: str = Field(..., description=f"Allowlisted app name: {sorted(ALLOWED_APPS)}")
+
+    @field_validator("app")
+    @classmethod
+    def must_be_allowlisted(cls, v: str) -> str:
+        normalized = v.strip().lower()
+        if normalized not in ALLOWED_APPS:
+            raise ValueError(
+                f"'{v}' is not in the allowlist {sorted(ALLOWED_APPS)}"
+            )
+        return normalized
 
 
 def _get_time(_args: GetTimeInput, _ctx: ToolContext) -> str:
