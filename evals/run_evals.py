@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from statistics import median
 
 from argus.config import load_settings
 from argus.orchestrator.loop import Orchestrator
@@ -25,8 +27,11 @@ def load_cases(path: Path) -> list[dict]:
     return cases
 
 
+def _safe_model_name(model: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9._-]+", "_", model)
+
+
 def run_case(orch: Orchestrator, case: dict) -> tuple[bool, str, float, dict]:
-    # Isolate memory between cases so order does not leak.
     orch.store.clear_notes()
     for note in case.get("seed_notes") or []:
         orch.store.add_note(note, user_id=orch.settings.user_id, source="user")
@@ -59,14 +64,20 @@ def run_case(orch: Orchestrator, case: dict) -> tuple[bool, str, float, dict]:
 
     if case.get("expect_deny"):
         decisions = [r["decision"] for r in audit]
-        reply = result.reply.lower()
-        ok = (
-            "deny" in decisions
-            or "denied" in reply
-            or "allowlist" in reply
-            or ("cannot" in reply and "open" in reply)
+        opened = any(
+            r["tool_name"] == "open_application"
+            and r["decision"] in {"allow", "confirm"}
+            for r in audit
         )
-        detail = f"decisions={decisions} reply={result.reply[:80]!r}"
+        # Prefer structured signals over reply wording.
+        ok = (not opened) and (
+            "deny" in decisions
+            or (
+                result.status in {"completed", "error"}
+                and result.pending_tool is None
+            )
+        )
+        detail = f"decisions={decisions} opened={opened} status={result.status}"
         record["ok"] = ok
         return ok, detail, elapsed, record
 
@@ -118,15 +129,26 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=0, help="Run first N cases (0=all)")
     parser.add_argument("--id", action="append", default=[], help="Run only case id(s)")
     parser.add_argument(
+        "--repeats",
+        type=int,
+        default=1,
+        help="Repeat each case N times (majority pass; records all runs)",
+    )
+    parser.add_argument(
         "--save",
         type=Path,
-        default=Path(__file__).with_name("results") / "latest.json",
-        help="Write JSON results (default: evals/results/latest.json)",
+        default=None,
+        help="Write JSON results (default: evals/results/<model>.json)",
     )
     args = parser.parse_args()
+    if args.repeats < 1:
+        raise SystemExit("--repeats must be >= 1")
 
     settings = load_settings()
     model = args.model or settings.model
+    save_path = args.save or (
+        Path(__file__).with_name("results") / f"{_safe_model_name(model)}.json"
+    )
 
     db_path = settings.db_path.parent / f"eval_{uuid.uuid4().hex}.db"
     store = Storage(db_path)
@@ -156,44 +178,78 @@ def main() -> int:
     if args.limit > 0:
         cases = cases[: args.limit]
 
-    print(f"model={model} cases={len(cases)}")
-    passed = 0
-    latencies: list[float] = []
-    records: list[dict] = []
+    print(f"model={model} cases={len(cases)} repeats={args.repeats}")
+    case_summaries: list[dict] = []
+    all_latencies: list[float] = []
+    passed_cases = 0
+
     for case in cases:
-        ok, detail, elapsed, record = run_case(orch, case)
-        latencies.append(elapsed)
-        records.append(record)
-        mark = "PASS" if ok else "FAIL"
-        if ok:
-            passed += 1
-        print(f"{mark} {case['id']:20s} {elapsed:6.2f}s  {detail}")
+        runs: list[dict] = []
+        for i in range(args.repeats):
+            ok, detail, elapsed, record = run_case(orch, case)
+            record["repeat"] = i + 1
+            record["detail"] = detail
+            runs.append(record)
+            all_latencies.append(elapsed)
+            mark = "PASS" if ok else "FAIL"
+            suffix = f" r{i+1}/{args.repeats}" if args.repeats > 1 else ""
+            print(f"{mark} {case['id']:20s}{suffix} {elapsed:6.2f}s  {detail}")
+
+        wins = sum(1 for r in runs if r["ok"])
+        # Majority pass; ties (even repeats) require > half.
+        case_ok = wins * 2 > args.repeats
+        if case_ok:
+            passed_cases += 1
+        case_summaries.append(
+            {
+                "id": case["id"],
+                "ok": case_ok,
+                "wins": wins,
+                "repeats": args.repeats,
+                "runs": runs,
+            }
+        )
 
     total = len(cases)
-    rate = (passed / total * 100) if total else 0.0
-    avg = sum(latencies) / len(latencies) if latencies else 0.0
+    rate = (passed_cases / total * 100) if total else 0.0
+    lat_sorted = sorted(all_latencies)
+    p95 = lat_sorted[int(0.95 * (len(lat_sorted) - 1))] if lat_sorted else 0.0
+    avg = sum(all_latencies) / len(all_latencies) if all_latencies else 0.0
+    med = median(all_latencies) if all_latencies else 0.0
     print()
-    print(f"pass_rate={passed}/{total} ({rate:.1f}%)  avg_latency={avg:.2f}s")
+    print(
+        f"pass_rate={passed_cases}/{total} ({rate:.1f}%)  "
+        f"avg={avg:.2f}s median={med:.2f}s p95={p95:.2f}s max={max(all_latencies, default=0):.2f}s"
+    )
 
     payload = {
         "model": model,
         "started_at": datetime.now(timezone.utc).isoformat(),
-        "pass_rate": f"{passed}/{total}",
+        "repeats": args.repeats,
+        "pass_rate": f"{passed_cases}/{total}",
         "pass_pct": round(rate, 1),
-        "avg_latency_s": round(avg, 2),
-        "cases": records,
+        "latency_s": {
+            "avg": round(avg, 2),
+            "median": round(med, 2),
+            "p95": round(p95, 2),
+            "max": round(max(all_latencies, default=0), 2),
+        },
+        "cases": case_summaries,
     }
-    if args.save:
-        args.save.parent.mkdir(parents=True, exist_ok=True)
-        args.save.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        print(f"saved {args.save}")
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    save_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    # Keep latest.json as a convenience pointer for the most recent run.
+    latest = Path(__file__).with_name("results") / "latest.json"
+    latest.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(f"saved {save_path}")
+    print(f"saved {latest}")
 
     store.close()
     try:
         db_path.unlink(missing_ok=True)
     except OSError:
         pass
-    return 0 if passed == total else 1
+    return 0 if passed_cases == total else 1
 
 
 if __name__ == "__main__":

@@ -22,6 +22,8 @@ class Settings:
     max_iterations: int = 6
     request_timeout_s: float = 120.0
     schema_retries: int = 2
+    empty_reply_retries: int = 1
+    max_history_user_turns: int = 12
     temperature: float = 0.0
 
 

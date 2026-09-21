@@ -17,6 +17,10 @@ Available tools are provided via function calling - only call tools that exist.
 Do not invent tool names. If a side-effect tool needs confirmation, the system will pause.
 """
 
+_SKIPPED_WAITING = json.dumps(
+    {"ok": False, "error": "skipped, waiting for confirmation of another tool"}
+)
+
 
 @dataclass
 class TurnResult:
@@ -156,7 +160,11 @@ class Orchestrator:
 
     def _build_messages(self, session_id: str) -> list[Message]:
         messages: list[Message] = [Message(role="system", content=SYSTEM_PROMPT)]
-        for row in self.store.list_messages(session_id, limit=40):
+        rows = self.store.load_history(
+            session_id,
+            max_user_turns=self.settings.max_history_user_turns,
+        )
+        for row in rows:
             role = row["role"]
             if role == "tool":
                 messages.append(
@@ -193,10 +201,39 @@ class Orchestrator:
             for tc in tool_calls
         ]
 
+    def _skip_remaining_tool_calls(
+        self,
+        session_id: str,
+        messages: list[Message],
+        remaining: list[ToolCall],
+    ) -> None:
+        """Answer sibling tool_calls so the provider never sees an unfinished batch."""
+        for tc in remaining:
+            self.store.audit(
+                session_id=session_id,
+                user_id=self.settings.user_id,
+                device_id=self.settings.device_id,
+                tool_name=tc.name,
+                arguments=tc.arguments,
+                decision="skip",
+                outcome="waiting for confirmation of another tool",
+            )
+            tool_msg = Message(
+                role="tool",
+                content=_SKIPPED_WAITING,
+                tool_call_id=tc.id,
+                name=tc.name,
+            )
+            self.store.add_message(
+                session_id, "tool", tool_msg.content, tool_call_id=tc.id
+            )
+            messages.append(tool_msg)
+
     def _run_loop(self, session_id: str, messages: list[Message]) -> TurnResult:
         ctx = self._tool_context(session_id)
         tools = self.registry.openai_tools()
         schema_retries_left = self.settings.schema_retries
+        empty_retries_left = self.settings.empty_reply_retries
 
         for _ in range(self.settings.max_iterations):
             try:
@@ -209,11 +246,18 @@ class Orchestrator:
                 return TurnResult(status="error", reply=f"LLM error: {exc}")
 
             if not assistant.tool_calls:
-                text = (assistant.content or "").strip() or "(no response)"
+                text = (assistant.content or "").strip()
+                if not text:
+                    if empty_retries_left > 0:
+                        empty_retries_left -= 1
+                        continue
+                    return TurnResult(
+                        status="error",
+                        reply="LLM returned an empty reply after retries.",
+                    )
                 self.store.add_message(session_id, "assistant", text)
                 return TurnResult(status="completed", reply=text)
 
-            # Assign stable ids before persisting so history round-trips.
             for tc in assistant.tool_calls:
                 tc.id = tc.id or uuid.uuid4().hex
 
@@ -225,7 +269,7 @@ class Orchestrator:
             )
             messages.append(assistant)
 
-            for tc in assistant.tool_calls:
+            for idx, tc in enumerate(assistant.tool_calls):
                 tc_id = tc.id
                 spec = self.registry.get(tc.name)
 
@@ -298,6 +342,12 @@ class Orchestrator:
                         arguments=args_dict,
                         decision="confirm",
                         outcome="awaiting user",
+                    )
+                    # Close out the rest of this batch so history stays valid.
+                    self._skip_remaining_tool_calls(
+                        session_id,
+                        messages,
+                        assistant.tool_calls[idx + 1 :],
                     )
                     return TurnResult(
                         status="awaiting_confirm",

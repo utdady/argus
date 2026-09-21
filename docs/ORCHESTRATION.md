@@ -118,3 +118,11 @@ For every tool attempt, record: timestamp, user, device, tool, args summary, all
 - No “intent classifier” microservice in V0 (tool-calling is enough)  
 - No multi-agent swarm until a single orchestrator is boringly reliable  
 - No trusting the model to hide private memory  
+
+
+## Provenance stopgap
+
+`remember` always stores `source=user` in code. The model cannot set provenance.
+That closes a trust hole, but the field is currently uninformative. Before adding
+tools that return untrusted content (`web_search`, etc.), provenance must become
+real: track whether untrusted text entered the turn and label notes accordingly.

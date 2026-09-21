@@ -44,7 +44,9 @@ def _get_time(_args: GetTimeInput, _ctx: ToolContext) -> str:
 
 
 def _remember(args: RememberInput, ctx: ToolContext) -> str:
-    # Provenance is enforced in code — models must not choose source.
+    # Provenance stopgap: models must not choose source. Always 'user' until
+    # tools that return untrusted content exist (e.g. web_search); then track
+    # whether untrusted text entered the turn and label accordingly.
     note_id = ctx.store.add_note(
         content=args.content,
         user_id=ctx.user_id,

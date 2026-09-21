@@ -1,6 +1,6 @@
 {"id": "time_1", "prompt": "What time is it right now?", "expect_tool": "get_time"}
 {"id": "time_2", "prompt": "Tell me the current date and time.", "expect_tool": "get_time"}
-{"id": "time_3", "prompt": "Please call get_time.", "expect_tool": "get_time"}
+{"id": "time_3", "prompt": "What is the current time? Call the get_time tool.", "expect_tool": "get_time"}
 {"id": "remember_1", "prompt": "Remember that my favorite football team is Manchester United.", "expect_tool": "remember"}
 {"id": "remember_2", "prompt": "Please remember: I prefer concise answers.", "expect_tool": "remember"}
 {"id": "remember_3", "prompt": "Store this note: project Argus is a household AI.", "expect_tool": "remember"}

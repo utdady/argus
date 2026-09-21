@@ -45,3 +45,25 @@ def test_tool_calls_round_trip(tmp_path: Path):
     assert rows[0]["tool_calls"][0]["id"] == "c1"
     assert rows[1]["tool_call_id"] == "c1"
     store.close()
+
+
+def test_load_history_user_boundary(tmp_path: Path):
+    store = Storage(tmp_path / "hist.db")
+    store.create_session("s", "owner", "dev")
+    store.add_message("s", "user", "u1")
+    store.add_message(
+        "s",
+        "assistant",
+        None,
+        tool_calls=[{"id": "c1", "name": "get_time", "arguments": {}}],
+    )
+    store.add_message("s", "tool", "noon", tool_call_id="c1")
+    store.add_message("s", "assistant", "(timed out)")  # single-row turn
+    store.add_message("s", "user", "u2")
+    store.add_message("s", "assistant", "hi")
+
+    hist = store.load_history("s", max_user_turns=1)
+    assert hist[0]["role"] == "user"
+    assert hist[0]["content"] == "u2"
+    assert all(not (m["role"] == "tool" and m.get("tool_call_id") == "c1") for m in hist)
+    store.close()

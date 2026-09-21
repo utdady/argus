@@ -301,13 +301,39 @@ class Storage:
             """,
             (session_id, limit),
         ).fetchall()
-        out: list[dict[str, Any]] = []
-        for r in reversed(rows):
-            item = dict(r)
-            raw = item.pop("tool_calls_json", None)
-            item["tool_calls"] = json.loads(raw) if raw else []
-            out.append(item)
-        return out
+        return [self._row_to_message(r) for r in reversed(rows)]
+
+    @staticmethod
+    def _row_to_message(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+        item = dict(r)
+        raw = item.pop("tool_calls_json", None)
+        item["tool_calls"] = json.loads(raw) if raw else []
+        return item
+
+    def load_history(
+        self, session_id: str, max_user_turns: int = 12, fetch_cap: int = 200
+    ) -> list[dict[str, Any]]:
+        """Return recent messages starting at a user-turn boundary.
+
+        Row-limited windows can start mid-turn (e.g. orphan tool results).
+        This keeps whole turns: from the Nth-last user message forward.
+        """
+        if max_user_turns <= 0:
+            return []
+        rows = self._conn.execute(
+            """
+            SELECT role, content, tool_call_id, tool_calls_json FROM messages
+            WHERE session_id = ?
+            ORDER BY id DESC LIMIT ?
+            """,
+            (session_id, fetch_cap),
+        ).fetchall()
+        chron = [self._row_to_message(r) for r in reversed(rows)]
+        user_idxs = [i for i, m in enumerate(chron) if m["role"] == "user"]
+        if not user_idxs:
+            return chron
+        start = user_idxs[-max_user_turns] if len(user_idxs) >= max_user_turns else user_idxs[0]
+        return chron[start:]
 
     def add_note(self, content: str, user_id: str, source: str = "user") -> int:
         cur = self._conn.execute(
